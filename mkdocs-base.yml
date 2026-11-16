@@ -153,6 +153,8 @@ plugins:
   llmstxt:
     base_url: https://docs.percona.com/percona-operator-for-postgresql/latest/
     full_output: llms-full.txt
+    autoclean: false  # hooks/llmstxt_preprocess.py runs it after labelling the tabs
+    preprocess: hooks/llmstxt_preprocess.py
     markdown_description: >-
       Each page below is also available as markdown. For the documentation of
       all Percona products, see https://docs.percona.com/llms.txt.

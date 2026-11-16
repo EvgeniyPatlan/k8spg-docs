@@ -69,6 +69,19 @@ def test_directive() -> None:
     assert llms_txt.directive(INDEX_URL) == f"> For the complete documentation index, see [llms.txt]({INDEX_URL}).\n\n"
 
 
+def test_mark_human_only() -> None:
+    html = (
+        '<h2 id="a">A<a class="headerlink" href="#a">¶</a></h2>'
+        '<div class="tabbed-labels"><label>X</label></div>'
+        '<a class="headerlinks" href="#">kept</a><div class="tabbed-content"></div>'
+    )
+    assert llms_txt.mark_human_only(html) == (
+        '<h2 id="a">A<a data-markdown-ignore class="headerlink" href="#a">¶</a></h2>'
+        '<div data-markdown-ignore class="tabbed-labels"><label>X</label></div>'
+        '<a class="headerlinks" href="#">kept</a><div class="tabbed-content"></div>'
+    )
+
+
 # --- a real build ------------------------------------------------------------
 
 
@@ -97,6 +110,9 @@ plugins:
 site_name: Product
 site_url: https://docs.example.com/product/
 use_directory_urls: false
+markdown_extensions:
+  - toc:
+      permalink: true
 hooks:
   - {HOOK.as_posix()}
 nav:
@@ -143,6 +159,7 @@ def test_build_writes_index_from_nav_and_markdown_pages_with_pointer(tmp_path: P
         assert text.count("For the complete documentation index") == 1, page
     assert not (site / "draft.md").exists()
     assert (site / "llms-full.txt").is_file()
+    assert '<a data-markdown-ignore class="headerlink"' in (site / "install.html").read_text(encoding="utf-8")
 
 
 def test_sections_in_mkdocs_yml_win_over_nav(tmp_path: Path) -> None:
@@ -158,6 +175,7 @@ def test_without_the_plugin_the_hook_does_nothing(tmp_path: Path) -> None:
     site = run_build(make_site(tmp_path, plugin=False))
     assert not (site / "llms.txt").exists()
     assert not list(site.rglob("*.md"))
+    assert "data-markdown-ignore" not in (site / "install.html").read_text(encoding="utf-8")
 
 
 def test_pointer_falls_back_to_site_url_without_base_url(tmp_path: Path) -> None:

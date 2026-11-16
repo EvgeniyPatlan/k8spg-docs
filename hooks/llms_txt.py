@@ -1,6 +1,6 @@
 """MkDocs hook for the mkdocs-llmstxt plugin.
 
-It does two things the plugin can't do from mkdocs.yml alone:
+It does three things the plugin can't do from mkdocs.yml alone:
 
 * Builds the plugin's ``sections`` from ``nav``, so llms.txt follows the
   navigation and there is no second list of pages to keep in sync. Each
@@ -8,19 +8,28 @@ It does two things the plugin can't do from mkdocs.yml alone:
   first section.
 * Starts the markdown version of every page with a pointer to this site's
   llms.txt, so an agent that lands on one page can find the whole index.
+* Marks the heading anchors (the pilcrow) and the bar of tab labels in the
+  HTML with ``data-markdown-ignore``: they are for people only, and tools
+  that compare a page's HTML with its markdown skip such elements. The
+  markdown keeps the tab labels; see llmstxt_preprocess.py.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
 from mkdocs.config.defaults import MkDocsConfig
 from mkdocs.plugins import BasePlugin, event_priority
 from mkdocs.structure.files import Files
+from mkdocs.structure.pages import Page
 
 PLUGIN = "llmstxt"
 FIRST_SECTION = "Overview"
+
+# Opening tags of elements that only make sense on screen.
+HUMAN_ONLY = re.compile(r'<(a|div) class="(headerlink|tabbed-labels)\b')
 
 # Markdown pages written by the plugin, as paths relative to site_dir.
 _md_pages: list[str] = []
@@ -80,6 +89,16 @@ def on_files(files: Files, *, config: MkDocsConfig) -> Files:
             if file.src_uri in wanted
         )
     return files
+
+
+def mark_human_only(html: str) -> str:
+    """Add ``data-markdown-ignore`` to heading anchors and tab-label bars."""
+    return HUMAN_ONLY.sub(r'<\1 data-markdown-ignore class="\2', html)
+
+
+def on_post_page(output: str, *, page: Page, config: MkDocsConfig) -> str:
+    """Mark the on-screen-only elements of every page that gets a markdown copy."""
+    return mark_human_only(output) if _plugin(config) is not None else output
 
 
 @event_priority(-100)  # after the plugin has written the markdown pages
