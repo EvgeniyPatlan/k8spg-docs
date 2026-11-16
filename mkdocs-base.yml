@@ -11,6 +11,10 @@ repo_name: percona/k8spg-docs
 repo_url: https://github.com/percona/k8spg-docs
 edit_uri: edit/3.0/docs/
 
+# hooks/llms_txt.py fills the llmstxt sections from nav
+hooks:
+  - hooks/llms_txt.py
+
 theme:
   name: material
   logo: assets/operators-logo.svg
@@ -145,6 +149,14 @@ plugins:
     enable_checks: false
     min_length: 50
     max_length: 160
+  # https://github.com/pawamoy/mkdocs-llmstxt: llms.txt, llms-full.txt and a .md copy of every page
+  llmstxt:
+    base_url: https://docs.percona.com/percona-operator-for-postgresql/latest/
+    full_output: llms-full.txt
+    markdown_description: >-
+      Each page below is also available as markdown. For the documentation of
+      all Percona products, see https://docs.percona.com/llms.txt.
+    sections: {}  # filled from nav by hooks/llms_txt.py
   macros:
     include_yaml:
       - "variables.yml"

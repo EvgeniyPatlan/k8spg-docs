@@ -5,3 +5,7 @@ docs/assets/.DS_Store
 .DS_Store
 Claude outputs/
 .cursor/agents
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

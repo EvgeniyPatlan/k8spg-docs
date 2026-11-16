@@ -1,0 +1,88 @@
+name: llms.txt
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "hooks/**"
+      - "tests/**"
+      - "_resource/overrides/**"
+      - "mkdocs-base.yml"
+      - "mkdocs.yml"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "requirements-dev.txt"
+      - ".github/workflows/llms-txt.yml"
+  push:
+    branches: ["3.0"]
+    paths:
+      - "hooks/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "requirements-dev.txt"
+      - ".github/workflows/llms-txt.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint, type-check and test (Python ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install tools (versions and hashes pinned)
+        run: python -m pip install --require-hashes --no-deps -r requirements-dev.txt
+      - name: Lint
+        run: ruff check hooks tests
+      - name: Format
+        run: ruff format --check hooks tests
+      - name: Type-check
+        run: mypy
+      - name: Test
+        run: pytest
+
+  build:
+    name: Build the site on the oldest supported Python
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11" # mkdocs-llmstxt needs 3.11+
+      - name: Install MkDocs and plugins (requirements.txt, as the docs deploy does)
+        run: python -m pip install -r requirements.txt
+      - name: Build
+        env:
+          CI: "false" # keeps git-committers off: it calls the GitHub API for every page
+          ENABLED_GIT_REVISION_DATE: "false" # needs the full history; the checkout is shallow
+          NO_MKDOCS_2_WARNING: "1"
+        run: mkdocs build --site-dir site
+      - name: Check the agent files
+        run: |
+          head -n 1 site/llms.txt | grep -qx "# Percona Operator for PostgreSQL"
+          test "$(grep -c '^- \[' site/llms.txt)" -gt 100
+          test -s site/llms-full.txt
+          head -n 1 site/backups.md | grep -q "/llms.txt)"
+          grep -q 'class="agent-hint" aria-hidden="true"' site/index.html
